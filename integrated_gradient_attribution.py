@@ -108,7 +108,7 @@ def integrate_gradient(x: Tensor, x_i: Tensor | None, fun: TensorFunction, base:
     :param x_i: Direction of partial derivative. It is often a one hot encoding of a given feature magnitude. 
         If none, function computes and returns the attributions for all feature magnitudes 
         Shape (encoding)
-    :param y: Scalar valued function with signature (batchsize, seq_len, encoding) -> []. 
+    :param fun: Scalar valued function with signature (batchsize, seq_len, encoding) -> []. 
         In practice, it is the value of the jth feature magnitude after passing the feature magnitudes in the input layer through the model to the target layer
     :param base: Start of path. Default to 0
     :param steps: Number of steps to use to approximate the integral
