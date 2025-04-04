@@ -46,4 +46,12 @@ Configurations are stored in [config/sae](config/sae). The Trainers are located 
 
 ```
 python -m training.sae.concurrent --config=standard.shakespeare_64x4 --load_from=shakespeare_64x4
+
+### Sparse + low Rank Autoencoders
+
+Modify the  rank list in experiments/SLRSAE training for the ranks you want then run
+
+python -m experiments.SLRAE_training --load_from=shakespeare_64x4
+
+Then you can use the notebook experiments/SLRAE_rank_comparisons.ipynb
 ```

@@ -62,6 +62,45 @@ class StandardSAE(SparseAutoencoder):
 
         return output
 
+class StandardSLRAE(StandardSAE):
+    def __init__(self, layer_idx: int, config: SAEConfig, loss_coefficients: Optional[LossCoefficients], model: nn.Module):
+        super().__init__(layer_idx, config, loss_coefficients, model)
+        self.rank_bound = config.rank_bound
+
+        feature_size = config.n_features[layer_idx]  # SAE dictionary size.
+        embedding_size = config.gpt_config.n_embd  # GPT embedding size.
+        
+        self.rank_down = nn.Parameter(torch.nn.init.xavier_uniform_(torch.empty(embedding_size, self.rank_bound))) if self.rank_bound else 0
+        self.rank_up = nn.Parameter(torch.nn.init.xavier_uniform_(torch.empty(self.rank_bound, embedding_size))) if self.rank_bound else 0
+        self.LR_bias = nn.Parameter(torch.zeros(self.rank_bound)) if self.rank_bound else 0
+
+    def decode(self, feature_magnitudes: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        """
+        feature_magnitudes: SAE activations (B, T, feature size)
+        """
+        if self.rank_bound:
+            return (feature_magnitudes @ self.W_dec + self.b_dec) + ((x @ self.rank_down + self.LR_bias)@self.rank_up)
+        return (feature_magnitudes @ self.W_dec + self.b_dec)
+    
+    def forward(self, x: torch.Tensor) -> EncoderOutput:
+        """
+        Returns a reconstruction of GPT model activations and feature magnitudes.
+        Also return loss components if loss coefficients are provided.
+
+        x: GPT model activations (B, T, embedding size)
+        """
+        feature_magnitudes = self.encode(x)
+        x_reconstructed = self.decode(feature_magnitudes, x)
+        output = EncoderOutput(x_reconstructed, feature_magnitudes)
+
+        if self.l1_coefficient:
+            decoder_norm = torch.norm(self.W_dec, p=2, dim=1)  # L2 norm
+            sparsity_loss = (feature_magnitudes * decoder_norm).sum(dim=-1).mean() * self.l1_coefficient
+            output.loss = SAELossComponents(x, x_reconstructed, feature_magnitudes, sparsity_loss)
+
+        return output
+
+
 
 class StandardSAE_V2(StandardSAE):
     """
